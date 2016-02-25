@@ -1,0 +1,17 @@
+#clean-uninstall {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#clean-uninstall iframe {
+  width: 60%;
+  height: 80%;
+  background-color: rgb(255, 255, 255);
+  border: medium none;
+}
