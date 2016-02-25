@@ -2,10 +2,12 @@
 
 var self = require('sdk/self');
 var tabs = require('sdk/tabs');
+var timers = require('sdk/timers');
 var unload = require('sdk/system/unload');
 var notifications = require('sdk/notifications');
 var array = require('sdk/util/array');
 var pageMod = require('sdk/page-mod');
+var sp = require('sdk/simple-prefs');
 var {Cc, Ci, Cu} = require('chrome');
 
 var {AddonManager} = Cu.import('resource://gre/modules/AddonManager.jsm');
@@ -39,6 +41,10 @@ var map = {
 };
 
 function cleanup (aid, name) {
+  // do not self clean
+  if (aid === self.id) {
+    return;
+  }
   name = name.replace(/\s+/g, '').replace(/\-/g, '').toLowerCase();
 
   cache[aid] = [];
@@ -184,3 +190,18 @@ for (let tab of tabs) {
     inject(tab);
   }
 }
+
+exports.main = function (options) {
+  if (options.loadReason === 'install' || options.loadReason === 'startup') {
+    let version = sp.prefs.version;
+    if (self.version !== version) {
+      timers.setTimeout(function () {
+        tabs.open(
+          'http://firefox.add0n.com/clean-uninstall.html?v=' + self.version +
+          (version ? '&p=' + version + '&type=upgrade' : '&type=install')
+        );
+      }, 3000);
+      sp.prefs.version = self.version;
+    }
+  }
+};
