@@ -2,7 +2,7 @@
   "title": "Clean Uninstall",
   "name": "icuninstall",
   "id": "jid1-gjJqQ12bh0olrR@jetpack",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Uninstall an extension and clean its fingerprints (stored preference values for instance)",
   "main": "./src/background.js",
   "author": "Richard Neomy",

@@ -177,13 +177,16 @@ function restore (aid) {
 var listen = {
   onEnabling: (addon) => restore(addon.id),
   onEnabled: function () {},
-  onDisabling: (addon) => cleanup(addon.id, addon.name),
+  onDisabling: (addon) => {
+    console.error(addon.type)
+    cleanup(addon.id, addon.name)
+  },
   onDisabled: function () {},
   onInstalling: function () {},
   onInstalled: function () {},
-  onUninstalling: (addon) => cleanup(addon.id, addon.name),
   onUninstalled: function () {},
-  onOperationCancelled: (addon) => restore(addon.id),
+  onUninstalling: (addon) => addon.type === 'extension' ? cleanup(addon.id, addon.name) : null,
+  onOperationCancelled: (addon) => addon.type === 'extension' ? cleanup(addon.id, addon.name) : null,
   onPropertyChanged: function () {}
 };
 
