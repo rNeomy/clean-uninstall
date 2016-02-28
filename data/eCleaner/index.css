@@ -1,0 +1,73 @@
+html {
+  height: 100%;
+}
+body {
+  height: calc(100% - 20px);
+  margin: 10px;
+  display: flex;
+  flex-direction: column;
+}
+table {
+  width: 100%;
+}
+body,
+table,
+input {
+  font-family: arial;
+  font-size: 12px;
+}
+
+table td:nth-child(1),
+table td:nth-child(2) {
+  width: 50%;
+  padding-left: 5px;
+}
+table td:nth-child(3),
+table td:nth-child(4) {
+  width: 80px;
+  text-align: center;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+input {
+  background: #fff;
+  border: solid 1px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  padding: 0 5px;
+  margin: 1px;
+  height: 28px;
+  min-height: 28px;
+  outline: none;
+}
+input[type=button] {
+  cursor: pointer;
+}
+input:focus{
+  border-color: rgba(0, 0, 0, 0.2);
+}
+input:active{
+  border-color: rgba(0, 0, 0, 0.3);
+}
+input:invalid {
+  border-color: red;
+}
+input:disabled {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+#body {
+  flex: 1;
+  overflow: auto;
+}
+#body tr[data-disabled=true] {
+  opacity: 0.3;
+  pointer-events: none;
+}
+#controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+}

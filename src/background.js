@@ -13,6 +13,18 @@ var {Cc, Ci, Cu} = require('chrome');
 var {AddonManager} = Cu.import('resource://gre/modules/AddonManager.jsm');
 var prefService = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefService);
 
+//Polyfill
+if (!Object.values) {
+  let reduce = Function.bind.call(Function.call, Array.prototype.reduce);
+  let isEnumerable = Function.bind.call(Function.call, Object.prototype.propertyIsEnumerable);
+  let concat = Function.bind.call(Function.call, Array.prototype.concat);
+  let keys = Reflect.ownKeys;
+
+  Object.values = function values (O) {
+    return reduce(keys(O), (v, k) => concat(v, typeof k === 'string' && isEnumerable(O, k) ? [O[k]] : []), []);
+  };
+}
+
 var cache = {};
 var workers = [];
 
@@ -38,7 +50,46 @@ var map = {
   'inspector@mozilla.org': 'inspector', // DOM Inspector
   '{a0d7ccb3-214d-498b-b4aa-0e8fda9a7bf7}': 'weboftrust', // WOT
   '{1BC9BA34-1EED-42ca-A505-6D2F1A935BBB}': 'ietab2', // IE Tab 2
+  'jid0-GjwrPchS3Ugt7xydvqVK4DQk8Ls@jetpack': 'autoinstaller', // Extension Auto-Installer
+  'autoinstaller@adblockplus.org': 'autoinstaller@adblockplus', // Extension Auto-Installer
+  '{d10d0bf8-f5b5-c8b4-a8b2-2b9879e08c5d}': 'adblockplus', // Adblock Plus
+  '{1018e4d6-728f-4b20-ad56-37578a4de76b}': 'flagfox', // Flagfox
+  'savedpasswordeditor@daniel.dawson': 'savedpasswordeditor', // Saved Password Editor
+  'privateTab@infocatcher': 'privateTab', // Private Tab
+  '{46551EC9-40F0-4e47-8E18-8E5CF550CFB8}': 'stylish', // Stylish
 };
+
+var eCleaner = (function () {
+  let reserved = [
+    'pocket', 'xpiState', 'webExtensionsMinPlatformVersion', 'systemAddon', 'systemAddonSet', 'strictCompatibility',
+    'alwaysUnpack', 'blocklist', 'bootstrappedAddons', 'databaseSchema', 'dss', 'enabledAddons', 'enabledItems',
+    'getAddons', 'getMoreThemesURL', 'installCache', 'lastAppVersion', 'logging', 'pendingOperations', 'spellcheck',
+    'webservice', 'change', 'checkCompatibility', 'minCompatibleAppVersion', 'minCompatiblePlatformVersion',
+    'installedDistroAddon', 'modern@themes', 'input', 'lastPlatformVersion', 'ui', 'update', 'autoDisableScopes',
+    'installDistroAddons', 'enabledScopes', 'shownSelectionUI', 'sdk', 'hotfix',
+    '{972ce4c6-7e08-4474-a285-3208198ce6fd}', 'e10sBlockedByAddons'
+  ];
+  return function () {
+    let cache = {};
+    prefService.getBranch('extensions.').getChildList('',{})
+      .map(n => n.split('.')[0])
+      .filter(n => reserved.indexOf(n) === -1)
+      .filter((n, i, l) => {
+        let bol = l.indexOf(n) === i;
+        if (bol) {
+          cache[n] = 1;
+        }
+        else {
+          cache[n] += 1;
+        }
+        return bol;
+      });
+    return cache;
+  };
+})();
+sp.on('ecleaner', function () {
+  workers.filter(w => w.tab === tabs.activeTab).forEach(w => w.port.emit('prompt'));
+});
 
 function cleanup (aid, name) {
   // do not self clean
@@ -126,7 +177,7 @@ function restore (aid) {
 var listen = {
   onEnabling: (addon) => restore(addon.id),
   onEnabled: function () {},
-  onDisabling: function () {},
+  onDisabling: (addon) => cleanup(addon.id, addon.name),
   onDisabled: function () {},
   onInstalling: function () {},
   onInstalled: function () {},
@@ -145,7 +196,8 @@ function inject (tab) {
   let worker = tab.attach({
     contentScriptFile: self.data.url('inject.js'),
     contentScriptOptions: {
-      url: self.data.url('list.html')
+      list: self.data.url('list.html'),
+      ecleaner: self.data.url('eCleaner/index.html')
     }
   });
   array.add(workers, worker);
@@ -177,6 +229,42 @@ pageMod.PageMod({
       worker.port.emit('init', cache[id]);
     });
     worker.port.on('notify', notify);
+  }
+});
+pageMod.PageMod({
+  include: self.data.url('eCleaner/index.html'),
+  contentScriptFile: self.data.url('eCleaner/index.js'),
+  onAttach: function (worker) {
+    worker.port.on('remove', function (branch) {
+      prefService.getBranch(`extensions.${branch}`).deleteBranch('');
+    });
+    worker.port.on('cancel', function () {
+      workers.filter(w => w.tab === worker.tab).forEach(w => w.port.emit('cancel'));
+    });
+    worker.port.on('init', function () {
+      let items = eCleaner();
+      if (Object.keys(items).length) {
+        worker.port.emit('init', items);
+      }
+      else {
+        timers.setTimeout(function () {
+          workers.filter(w => w.tab === worker.tab).forEach(w => w.port.emit('cancel'));
+        }, 5000);
+        notify('Good news, your Firefox profile is clean!');
+      }
+    });
+    worker.port.on('notify', notify);
+    worker.port.on('name', function (id) {
+      let index = Object.values(map).indexOf(id);
+      AddonManager.getAddonByID(index !== -1 ? Object.keys(map)[index] : id, function (addon) {
+        worker.port.emit('name', {
+          id,
+          name: addon ? addon.name : (id.indexOf('@jetpack') === -1 ? 'unknown add-on' : 'a removed add-on'),
+          value: !addon && id.indexOf('@jetpack') !== -1,
+          disabled: !!addon
+        });
+      });
+    });
   }
 });
 

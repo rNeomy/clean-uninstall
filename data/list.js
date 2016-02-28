@@ -20,7 +20,12 @@ document.addEventListener('click', function (e) {
       .map(e => e.parentNode.previousSibling.textContent);
     list.forEach(pref => self.port.emit('remove', {id, pref}));
     if (list.length) {
-      self.port.emit('notify', `${list.length} preference(s) are removed from your Firefox Profile`);
+      if (list.length === 1) {
+        self.port.emit('notify', `1 preference is removed from your Firefox Profile`);
+      }
+      else {
+        self.port.emit('notify', `${list.length} preferences are removed from your Firefox Profile`);
+      }
     }
     self.port.emit('cancel');
   }

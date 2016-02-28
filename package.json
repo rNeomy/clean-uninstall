@@ -2,7 +2,7 @@
   "title": "Clean Uninstall",
   "name": "icuninstall",
   "id": "jid1-gjJqQ12bh0olrR@jetpack",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Uninstall an extension and clean its fingerprints (stored preference values for instance)",
   "main": "./src/background.js",
   "author": "Richard Neomy",
@@ -12,5 +12,11 @@
   "license": "Mozilla Pulic License 2.0",
   "keywords": [
     "jetpack"
-  ]
+  ],
+  "preferences": [{
+    "type": "control",
+    "name": "ecleaner",
+    "label": "Open Cleaner",
+    "title": "View all stored preferences by add-ons"
+  }]
 }
