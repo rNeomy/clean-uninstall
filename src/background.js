@@ -119,7 +119,7 @@ function cleanup (aid, name) {
     );
   }
 
-  list.forEach(function (id) {
+  list.filter((e, i, l) => l.indexOf(e) === i).forEach(function (id) {
     let branch = prefService.getBranch(id);
     let type = branch.getPrefType('');
     if (type === branch.PREF_BOOL) {
