@@ -10,6 +10,8 @@ var pageMod = require('sdk/page-mod');
 var sp = require('sdk/simple-prefs');
 var {Cc, Ci, Cu} = require('chrome');
 
+var map = require('./map.js').mirror;
+
 var {AddonManager} = Cu.import('resource://gre/modules/AddonManager.jsm');
 var prefService = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefService);
 
@@ -36,29 +38,6 @@ function notify (text) {
   });
 }
 
-var map = {
-  '{b9db16a4-6edc-47ec-a1f4-b86292ed211d}': 'dwhelper', // Video DownloadHelper
-  '{DDC359D1-844A-42a7-9AA1-88A850A938A8}': 'dta', // DownThemAll!
-  'artur.dubovoy@gmail.com': 'fvd_single', // Flash Video Downloader - YouTube HD Download
-  '{dc572301-7619-498c-a57d-39143191b318}': 'tabmix', // Tab Mix Plus
-  'uBlock0@raymondhill.net': 'ublock0', // uBlock Origin
-  'translator@zoli.bod': 'googletranslatorforff', // Google Translator for Firefox
-  '{bee6eb20-01e0-ebd1-da83-080329fb9a3a}': 'fnvfox', // Download Flash and Video
-  '{81BF1D23-5F17-408D-AC6B-BD6DF7CAF670}': 'imacros', // iMacros for Firefox
-  '{d40f5e7b-d2cf-4856-b441-cc613eeffbe3}': 'bprivacy', // BetterPrivacy
-  'anttoolbar@ant.com': 'anttoolbar', // BetterPrivacy
-  'inspector@mozilla.org': 'inspector', // DOM Inspector
-  '{a0d7ccb3-214d-498b-b4aa-0e8fda9a7bf7}': 'weboftrust', // WOT
-  '{1BC9BA34-1EED-42ca-A505-6D2F1A935BBB}': 'ietab2', // IE Tab 2
-  'jid0-GjwrPchS3Ugt7xydvqVK4DQk8Ls@jetpack': 'autoinstaller', // Extension Auto-Installer
-  'autoinstaller@adblockplus.org': 'autoinstaller@adblockplus', // Extension Auto-Installer
-  '{d10d0bf8-f5b5-c8b4-a8b2-2b9879e08c5d}': 'adblockplus', // Adblock Plus
-  '{1018e4d6-728f-4b20-ad56-37578a4de76b}': 'flagfox', // Flagfox
-  'savedpasswordeditor@daniel.dawson': 'savedpasswordeditor', // Saved Password Editor
-  'privateTab@infocatcher': 'privateTab', // Private Tab
-  '{46551EC9-40F0-4e47-8E18-8E5CF550CFB8}': 'stylish', // Stylish
-};
-
 var eCleaner = (function () {
   let reserved = [
     'pocket', 'xpiState', 'webExtensionsMinPlatformVersion', 'systemAddon', 'systemAddonSet', 'strictCompatibility',
@@ -67,7 +46,7 @@ var eCleaner = (function () {
     'webservice', 'change', 'checkCompatibility', 'minCompatibleAppVersion', 'minCompatiblePlatformVersion',
     'installedDistroAddon', 'modern@themes', 'input', 'lastPlatformVersion', 'ui', 'update', 'autoDisableScopes',
     'installDistroAddons', 'enabledScopes', 'shownSelectionUI', 'sdk', 'hotfix',
-    '{972ce4c6-7e08-4474-a285-3208198ce6fd}', 'e10sBlockedByAddons'
+    '{972ce4c6-7e08-4474-a285-3208198ce6fd}', 'e10sBlockedByAddons', 'sdk-toolbar-collapsed'
   ];
   return function () {
     let cache = {};
@@ -91,7 +70,11 @@ sp.on('ecleaner', function () {
   workers.filter(w => w.tab === tabs.activeTab).forEach(w => w.port.emit('prompt'));
 });
 
-function cleanup (aid, name) {
+function cleanup (addon) {
+  if (addon.type !== 'extension') {
+    return;
+  }
+  let aid = addon.id, name = addon.name;
   // do not self clean
   if (aid === self.id) {
     return;
@@ -153,7 +136,11 @@ function cleanup (aid, name) {
   }
 }
 
-function restore (aid) {
+function restore (addon) {
+  if (addon.type !== 'extension') {
+    return;
+  }
+  let aid = addon.id;
   let arr = (cache[aid] || []).filter(o => o.removed);
   if (arr.length) {
     arr.forEach(function (obj) {
@@ -175,18 +162,15 @@ function restore (aid) {
 }
 
 var listen = {
-  onEnabling: (addon) => restore(addon.id),
+  onEnabling: restore,
   onEnabled: function () {},
-  onDisabling: (addon) => {
-    console.error(addon.type)
-    cleanup(addon.id, addon.name)
-  },
+  onDisabling: cleanup,
   onDisabled: function () {},
   onInstalling: function () {},
   onInstalled: function () {},
   onUninstalled: function () {},
-  onUninstalling: (addon) => addon.type === 'extension' ? cleanup(addon.id, addon.name) : null,
-  onOperationCancelled: (addon) => addon.type === 'extension' ? cleanup(addon.id, addon.name) : null,
+  onUninstalling: cleanup,
+  onOperationCancelled: cleanup,
   onPropertyChanged: function () {}
 };
 
@@ -260,10 +244,21 @@ pageMod.PageMod({
     worker.port.on('name', function (id) {
       let index = Object.values(map).indexOf(id);
       AddonManager.getAddonByID(index !== -1 ? Object.keys(map)[index] : id, function (addon) {
+        let name = 'unknown add-on';
+        if (id.indexOf('@jetpack') !== -1) {
+          name = 'a removed bootstrapped add-on';
+        }
+        if (index !== -1) {
+          name = `a removed classical add-on; GUID is "${Object.keys(map)[index]}"`;
+        }
+        if (addon) {
+          name = addon.name;
+        }
+        console.error(id, addon)
         worker.port.emit('name', {
           id,
-          name: addon ? addon.name : (id.indexOf('@jetpack') === -1 ? 'unknown add-on' : 'a removed add-on'),
-          value: !addon && id.indexOf('@jetpack') !== -1,
+          name,
+          value: !addon && (id.indexOf('@jetpack') !== -1 || index !== -1),
           disabled: !!addon
         });
       });
