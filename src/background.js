@@ -17,13 +17,12 @@ var prefService = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPref
 
 //Polyfill
 if (!Object.values) {
-  let reduce = Function.bind.call(Function.call, Array.prototype.reduce);
-  let isEnumerable = Function.bind.call(Function.call, Object.prototype.propertyIsEnumerable);
-  let concat = Function.bind.call(Function.call, Array.prototype.concat);
-  let keys = Reflect.ownKeys;
-
-  Object.values = function values (O) {
-    return reduce(keys(O), (v, k) => concat(v, typeof k === 'string' && isEnumerable(O, k) ? [O[k]] : []), []);
+  Object.values = function (O) {
+    let arr = [];
+    for (let name in O) {
+      arr.push(O[name]);
+    }
+    return arr;
   };
 }
 
@@ -48,32 +47,42 @@ var eCleaner = (function () {
     'installDistroAddons', 'enabledScopes', 'shownSelectionUI', 'sdk', 'hotfix',
     '{972ce4c6-7e08-4474-a285-3208198ce6fd}', 'e10sBlockedByAddons', 'sdk-toolbar-collapsed'
   ];
-  return function () {
+  return function (callback) {
     let cache = {};
-    prefService.getBranch('extensions.').getChildList('',{})
-      .map(n => n.split('.')[0])
-      .filter(n => reserved.indexOf(n) === -1)
-      .filter((n, i, l) => {
-        let bol = l.indexOf(n) === i;
-        if (bol) {
-          cache[n] = 1;
-        }
-        else {
-          cache[n] += 1;
-        }
-        return bol;
-      });
-    return cache;
+    AddonManager.getAllAddons(function(aAddons) {
+      let installed = aAddons.map(a => a.id);
+      prefService.getBranch('extensions.').getChildList('',{})
+        .map(function (name) {
+          let listed = installed.reduce((p, c) => name.indexOf(c) === 0 ? c : p, null);
+          return listed || name.split('.')[0];
+        })
+        .filter(n => reserved.indexOf(n) === -1)
+        .filter((n, i, l) => {
+          let bol = l.indexOf(n) === i;
+          if (bol) {
+            cache[n] = 1;
+          }
+          else {
+            cache[n] += 1;
+          }
+          return bol;
+        });
+      callback(cache);
+    });
   };
 })();
 sp.on('ecleaner', function () {
   workers.filter(w => w.tab === tabs.activeTab).forEach(w => w.port.emit('prompt'));
 });
 
-function cleanup (addon) {
+function cleanup (addon, method) {
   if (addon.type !== 'extension') {
     return;
   }
+  if (method !== 'onUninstalling' &&  addon.operationsRequiringRestart !== AddonManager.OP_NEEDS_RESTART_NONE) {
+    return;
+  }
+
   let aid = addon.id, name = addon.name;
   // do not self clean
   if (aid === self.id) {
@@ -164,13 +173,13 @@ function restore (addon) {
 var listen = {
   onEnabling: restore,
   onEnabled: function () {},
-  onDisabling: cleanup,
+  onDisabling: (addon) => cleanup(addon, 'onDisabling'),
   onDisabled: function () {},
   onInstalling: function () {},
   onInstalled: function () {},
   onUninstalled: function () {},
-  onUninstalling: cleanup,
-  onOperationCancelled: cleanup,
+  onUninstalling: (addon) => cleanup(addon, 'onUninstalling'),
+  onOperationCancelled: function () {},
   onPropertyChanged: function () {}
 };
 
@@ -229,16 +238,17 @@ pageMod.PageMod({
       workers.filter(w => w.tab === worker.tab).forEach(w => w.port.emit('cancel'));
     });
     worker.port.on('init', function () {
-      let items = eCleaner();
-      if (Object.keys(items).length) {
-        worker.port.emit('init', items);
-      }
-      else {
-        timers.setTimeout(function () {
-          workers.filter(w => w.tab === worker.tab).forEach(w => w.port.emit('cancel'));
-        }, 5000);
-        notify('Good news, your Firefox profile is clean!');
-      }
+      eCleaner(function (items) {
+        if (Object.keys(items).length) {
+          worker.port.emit('init', items);
+        }
+        else {
+          timers.setTimeout(function () {
+            workers.filter(w => w.tab === worker.tab).forEach(w => w.port.emit('cancel'));
+          }, 5000);
+          notify('Good news, your Firefox profile is clean!');
+        }
+      });
     });
     worker.port.on('notify', notify);
     worker.port.on('name', function (id) {
@@ -254,11 +264,10 @@ pageMod.PageMod({
         if (addon) {
           name = addon.name;
         }
-        console.error(id, addon)
         worker.port.emit('name', {
           id,
           name,
-          value: !addon && (id.indexOf('@jetpack') !== -1 || index !== -1),
+          value: !addon && id.indexOf('@jetpack') !== -1,
           disabled: !!addon
         });
       });

@@ -32,7 +32,7 @@ document.addEventListener('click', function (e) {
 });
 
 self.port.on('init', function (arr) {
-  document.querySelector('p').textContent = `Total number of preferences created by this extension is: ${arr.length}`;
+  document.querySelector('p').textContent = `Total number of preferences created by this extension is: ${arr.length}.`;
   let tbody = document.querySelector('tbody');
   arr.forEach(function (obj) {
     let tr = document.createElement('tr');
