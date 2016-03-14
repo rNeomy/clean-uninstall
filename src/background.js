@@ -44,7 +44,7 @@ var eCleaner = (function () {
     'getAddons', 'getMoreThemesURL', 'installCache', 'lastAppVersion', 'logging', 'pendingOperations', 'spellcheck',
     'webservice', 'change', 'checkCompatibility', 'minCompatibleAppVersion', 'minCompatiblePlatformVersion',
     'installedDistroAddon', 'modern@themes', 'input', 'lastPlatformVersion', 'ui', 'update', 'autoDisableScopes',
-    'installDistroAddons', 'enabledScopes', 'shownSelectionUI', 'sdk', 'hotfix',
+    'installDistroAddons', 'enabledScopes', 'shownSelectionUI', 'sdk', 'hotfix', 'browser',
     '{972ce4c6-7e08-4474-a285-3208198ce6fd}', 'e10sBlockedByAddons', 'sdk-toolbar-collapsed'
   ];
   return function (callback) {
