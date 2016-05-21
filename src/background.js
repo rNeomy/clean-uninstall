@@ -72,7 +72,13 @@ var eCleaner = (function () {
   };
 })();
 sp.on('ecleaner', function () {
-  workers.filter(w => w.tab === tabs.activeTab).forEach(w => w.port.emit('prompt'));
+  let arr = workers.filter(w => w.tab === tabs.activeTab)
+  if (arr.length) {
+    arr.forEach(w => w.port.emit('prompt'));
+  }
+  else {
+    tabs.open(self.data.url('eCleaner/index.html'));
+  }
 });
 
 function cleanup (addon, method) {
@@ -84,6 +90,7 @@ function cleanup (addon, method) {
   }
 
   let aid = addon.id, name = addon.name;
+
   // do not self clean
   if (aid === self.id) {
     return;
@@ -138,7 +145,13 @@ function cleanup (addon, method) {
   });
 
   if (list.length) {
-    workers.filter(w => w.tab === tabs.activeTab).forEach(w => w.port.emit('prompt', aid));
+    let arr = workers.filter(w => w.tab === tabs.activeTab)
+    if (arr.length) {
+      arr.forEach(w => w.port.emit('prompt', aid));
+    }
+    else {
+      tabs.open(self.data.url('list.html') + `?id=${aid}`);
+    }
   }
   else {
     notify('No preference associated to this extension is found');
@@ -179,7 +192,7 @@ var listen = {
   onInstalled: function () {},
   onUninstalled: function () {},
   onUninstalling: (addon) => cleanup(addon, 'onUninstalling'),
-  onOperationCancelled: function () {},
+  onOperationCancelled: restore,
   onPropertyChanged: function () {}
 };
 
@@ -220,6 +233,9 @@ pageMod.PageMod({
     });
     worker.port.on('cancel', function () {
       workers.filter(w => w.tab === worker.tab).forEach(w => w.port.emit('cancel'));
+      if (worker.tab.url.indexOf(self.data.url('')) === 0) {
+        worker.tab.close();
+      }
     });
     worker.port.on('init', function (id) {
       worker.port.emit('init', cache[id]);
@@ -253,6 +269,7 @@ pageMod.PageMod({
     worker.port.on('notify', notify);
     worker.port.on('name', function (id) {
       let index = Object.values(map).indexOf(id);
+
       AddonManager.getAddonByID(index !== -1 ? Object.keys(map)[index] : id, function (addon) {
         let name = 'unknown add-on';
         if (id.indexOf('@jetpack') !== -1) {

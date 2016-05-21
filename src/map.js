@@ -128,5 +128,6 @@ exports.mirror = {
   '{64161300-e22b-11db-8314-0800200c9a66}': 'speeddial',
   'QLiteManager@mrinalkant.blogspot.com': 'sqlitemanager',
   'yasearch@yandex.ru': 'yasearch@yandex',
-  '{a6ca9b3b-5e52-4f47-85d8-cca35bb57596}': 'sage'
+  '{a6ca9b3b-5e52-4f47-85d8-cca35bb57596}': 'sage',
+  'osb@quicksaver': 'omnisidebar'
 };
