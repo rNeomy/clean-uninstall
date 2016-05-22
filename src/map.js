@@ -129,5 +129,10 @@ exports.mirror = {
   'QLiteManager@mrinalkant.blogspot.com': 'sqlitemanager',
   'yasearch@yandex.ru': 'yasearch@yandex',
   '{a6ca9b3b-5e52-4f47-85d8-cca35bb57596}': 'sage',
+  'omnibarplus@quicksaver': 'omnibarplus',
+  'fbt@quicksaver': 'findbartweak',
+  'thePuzzlePiece@quicksaver': 'puzzlebars',
+  'thefoxonlybetter@quicksaver': 'thefoxonlybetter',
+  'tabgroups@quicksaver': 'tabgroups',
   'osb@quicksaver': 'omnisidebar'
 };
