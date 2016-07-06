@@ -29,6 +29,14 @@ if (!Object.values) {
 var cache = {};
 var workers = [];
 
+function close () {
+  for each (let tab in tabs) {
+    if (tab.url.startsWith(self.data.url(''))) {
+      tab.close();
+    }
+  }
+}
+
 function notify (text) {
   notifications.notify({
     title: 'Clean Uninstall',
@@ -77,6 +85,7 @@ sp.on('ecleaner', function () {
     arr.forEach(w => w.port.emit('prompt'));
   }
   else {
+    close();
     tabs.open(self.data.url('eCleaner/index.html'));
   }
 });
@@ -150,6 +159,7 @@ function cleanup (addon, method) {
       arr.forEach(w => w.port.emit('prompt', aid));
     }
     else {
+      close();
       tabs.open(self.data.url('list.html') + `?id=${aid}`);
     }
   }
@@ -317,3 +327,10 @@ exports.main = function (options) {
     }
   }
 };
+
+unload.when(function (e) {
+  if (e === 'shutdown') {
+    return;
+  }
+  close();
+});
