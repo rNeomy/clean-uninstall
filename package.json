@@ -13,6 +13,9 @@
   "keywords": [
     "jetpack"
   ],
+  "permissions": {
+    "multiprocess": true
+  },
   "preferences": [{
     "type": "control",
     "name": "ecleaner",
